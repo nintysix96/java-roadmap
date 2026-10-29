@@ -1,0 +1,13 @@
+# 编译产物
+*.class
+out/
+target/
+bin/
+
+# IntelliJ IDEA
+.idea/
+*.iml
+
+# 系统文件
+Thumbs.db
+.DS_Store

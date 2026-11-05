@@ -13,7 +13,7 @@
 | Day 4 | 数组 | ⏭ 跳过（见下方速查，代码里已验证） |
 | Day 5 | 方法 / 重载 / 递归 / 值传递 | ✅ 完成 |
 | Day 6 | 综合项目：学生成绩管理（118 行，6 条路径回归通过） | ✅ 完成 |
-| Day 7 | 第一周复盘 + 自测 | ⬜ 待做 |
+| Day 7 | 第一周复盘 + 自测 + v2（删除/排序/及格率，222 行，9 条回归通过） | ✅ 完成 |
 
 ---
 
@@ -355,12 +355,176 @@ a.equals(b)     // true  —— 比的是内容
 | 选 99 | `Invalid choice` | ✅ |
 | 菜单输 `abc` | ❌ `InputMismatchException`（待修） | ⬜ |
 
-### 6.6 Day 6 遗留 TODO
+### 6.6 Day 6 遗留 TODO（已在 Day 7 全部清掉）
 
-- [ ] 菜单层加 `hasNextInt()` 防护（坑 8）
-- [ ] `"No record"` → `"No records"`
-- [ ] `readScore()` 的提示语从 `while` 外挪到循环内（输错后不再提示）
-- [ ] Day 7 三个加练功能：删除学生、按成绩排序、显示及格率
+- [x] 菜单层加 `hasNextInt()` 防护（坑 8）
+- [x] `"No record"` → `"No records"`
+- [x] `readScore()` 的提示语从 `while` 外挪到循环内
+- [x] Day 7 三个加练功能：删除学生、按成绩排序、显示及格率
+
+---
+
+## Day 7：第一周复盘（闭卷自测 + v2 三个新功能）
+
+> 代码：`week01/learning/day06_score_manager/ScoreManager.java`（118 → 222 行，8 项菜单）
+
+### 7.1 闭卷自测批改（13 题，实际作答 8 题）
+
+| 题 | 考点 | 我的答案 | 判定 |
+|---|---|---|---|
+| 1 | `int[] b = a` 后改 `b[0]` | `a[0] = 9` | ✅（理由：复制的是地址，两个引用指向同一数组） |
+| 2 | 交换数组两个下标 | `tmp → arr[i]=arr[j] → arr[j]=tmp` | ✅ |
+| 3 | 基本类型能否被方法交换 | 不能，值传递；传数组可以 | ✅（补充：也可 `return new int[]{b,a}`） |
+| 4 | 哪些是合法重载 | "除了第二个之外" | ❌ **第 4 个也不合法** |
+| 5 | 递归求和终止条件 | `n == 1` 时 `return 1` | ✅（更稳：`if (n <= 0) return 0;`） |
+| 6 | `fib(10)` 调用次数 | 2 的 10 次方，循环次数少 | ✅（精确约 177 次；循环版 10 次） |
+| 7 | `main` 完整签名 | 缺 `public`，低版本报错 | ⚠️ 半对（还漏 `String[] args`，且与版本无关） |
+| 8 | `javac` 空文件 | 生成一个空 class | ❌ **不生成任何 class** |
+| 9–13 | Day 6 相关 | 跳过未答 | ⏭（答案速览见笔记前文） |
+
+**两个真漏洞（面试高频，务必记住）**
+
+**（1）参数名不参与方法签名**
+
+```java
+int f(int a) { return a; }
+int f(int b) { return b; }   // ❌ 编译错误：method f(int) is already defined
+```
+
+签名 = **方法名 + 参数的类型/顺序**。参数名只是形式，`f(int a)` 和 `f(int)` 在编译器眼里是同一个方法。
+
+所以合法重载只有：`int f(int)`、`int f(int,int)`；`double f(int)`（只有返回值不同）和 `int f(int a)`（签名重复）都不合法。
+
+**（2）空文件不生成 class**
+
+0 字节的 `.java` 文件 → `javac` **退出码 0、不报错、不产出任何字节码**。因为 `.class` 是为"类"生成的，空文件里没有类声明。
+
+判据永远是：**编译后看目录里有没有 `.class`**，而不是看有没有报错。
+
+**（3）`main` 的四要素**
+
+```java
+public static void main(String[] args)
+└─┬──┘ └─┬──┘ └┬─┘ └──────┬──────┘
+public  static  void    String[] args
+```
+
+缺 `public` / `static` / `String[] args` 任一个 → `Main method not found in class X`，与 JDK 版本无关。
+（JDK 25+ 支持无参 main 是特例，第 3 周切 JDK 21 后必须用标准签名。我已在项目里**三次**漏写 `public`。）
+
+### 7.2 删除元素的三步模式（平行数组）
+
+```java
+int index = indexOf(name);
+if (index == -1) {                       // ① 先判断存在（-1 表示未找到）
+    System.out.println("Student not found");
+    return;
+}
+
+for (int i = index; i < count - 1; i++) { // ② 后面的元素整体前移一格
+    names[i] = names[i + 1];
+    scores[i] = scores[i + 1];
+}
+
+names[count - 1] = null;                 // ③ 清理尾部残留
+scores[count - 1] = 0;
+count--;                                 // ④ 人数同步减一（最容易忘）
+```
+
+三个关键点：
+
+| 点 | 说明 |
+|---|---|
+| 边界 `i < count - 1` | 写 `i < count` 会读 `arr[count]` 越界 |
+| 尾部清理 | 不清会打印出 `null 0 FAIL` 的"幽灵行" |
+| `count--` | `count` 是**影子数据**，任何增删都要手动同步，编译器不会提醒你 |
+
+**通用规律**：用"数组 + count"这种手工管理容量的结构时，**每次增删都要同时维护 count**。这也是第 2 周 `ArrayList` 存在的意义——它替你维护。
+
+### 7.3 平行数组排序要"双份交换"
+
+```java
+if (scores[j] < scores[j + 1]) {
+    int t = scores[j]; scores[j] = scores[j+1]; scores[j+1] = t;      // 换成绩
+    String s = names[j]; names[j] = names[j+1]; names[j+1] = s;       // 同时换姓名
+}
+```
+
+只换一边 → **姓名和成绩错位**，而且程序不报错、不抛异常，静默出错。这是平行数组最危险的地方。
+
+> 更彻底的办法是把 `name + score` 封成一个对象（第 8 天学完类之后就能做），从根上消除平行数组。这就是面向对象要解决的问题之一。
+
+### 7.4 `printf` 打印百分号，以及及格率的算法
+
+```java
+int passed = 0;
+for (int i = 0; i < count; i++) {
+    if (scores[i] >= 60) passed++;
+}
+double rate = passed * 100.0 / count;        // 必须乘 100 才是百分数
+System.out.printf("Pass rate: %.1f%%%n", rate);   // %% → 一个字符 %
+```
+
+- `passed / count` 得到的是 **0~1 的比例**，直接用会打印成 `0.7%`
+- `%%` 是 printf 里转义百分号的写法：`%.1f` 输出数字，`%%` 输出 `%`
+- 最后是 `66.7%`（1 位小数四舍五入）
+
+### 7.5 "返回 -1" 的约定
+
+```java
+static int indexOf(String name) {
+    for (int i = 0; i < count; i++) {
+        if (names[i].equals(name)) return i;
+    }
+    return -1;      // 未找到
+}
+```
+
+**不要用 `return 0` 表示"没找到"**——0 是合法下标（第一个人），调用方无法区分"找到了第一个"和"没找到"。
+
+`-1` 是 Java 标准库的通用约定：`String.indexOf()`、`List.indexOf()`、`Arrays.binarySearch()` 找不到都返回负数。养成这个习惯，你和别人写的代码才能对接。
+
+### 7.6 今天又踩的 3 个坑
+
+| 现象 | 原因 | 解法 |
+|---|---|---|
+| `Pass rate: 0.7%` | `passed / count` 没乘 100 | `passed * 100.0 / count` |
+| 删除后列表出现 `null 0 FAIL` | 忘了 `count--` | 增删都要同步 count |
+| JDK 21 起动不了 | `main` 第 3 次缺 `public` | 固定写 `public static void main(String[] args)` |
+
+### 7.7 v2 回归验收（9 条全过）
+
+| # | 用例 | 实测 |
+|---|---|---|
+| 1 | 录 3 人 → 列表 | 3 行，PASS/PASS/FAIL 正确 |
+| 2 | 统计 | `Total: 232`、`Average: 77.3`、`Max: 92`、`Min: 55` |
+| 3 | 及格率 | `Pass rate: 66.7%` |
+| 4 | 排序 | `92 Bob / 85 Alice / 55 Carol`，姓名跟随 |
+| 5 | 删 Bob | `Deleted: Bob`，剩 2 行，无 null 幽灵行 |
+| 6 | 删不存在的人 | `Student not found`，列表不变 |
+| 7 | 删除后及格率 | `Pass rate: 50.0%`（说明 `count--` 生效） |
+| 8 | 空表 | `No records`（列表/统计/及格率/排序/删除统一） |
+| 9 | 菜单输 `abc` | `Invalid input`，不崩、回到菜单 |
+
+### 7.8 第一周收官
+
+**代码成果**：1 个命令行程序，118 → 222 行，8 项功能，11 个方法。
+
+**真正掌握的**：
+
+- 数组的引用语义、遍历、越界边界
+- 方法拆分、重载、值传递（能讲清 3 种情形）
+- 递归的终止条件与性能代价
+- Scanner 的完整时序（`hasNextInt` / `nextInt` / `nextLine` 三者关系）
+- 平行数组的增删改、双份交换、`count` 影子数据维护
+- `printf` 格式化、`equals` vs `==`、`indexOf` 返回 -1 的约定
+- Git 全链路：init → add → commit → push → 冲突排查
+
+**还欠的**：
+
+- 面向对象（第 8 天开始，整个 Java 的地基）
+- 集合框架（第 2 周）：有了 `ArrayList` 和 `HashMap`，这个项目能砍掉一半代码
+- 异常处理：现在全靠返回值表达错误，正式项目会用异常
 
 ---
 
@@ -387,6 +551,7 @@ a.equals(b)     // true  —— 比的是内容
 
 ## 下一步
 
-- **Day 7**：做完上面 13 道自测 + 给项目加 3 个功能（删除学生 / 按成绩排序 / 显示及格率）
-- **第 2 周**：面向对象（类与对象、构造器、封装、继承、多态、接口）
+- **Day 8**：面向对象——类与对象、构造器、`this`、封装（**重点，不要跳**）
+- **第 2 周后半**：继承、多态、抽象类、接口、`String`/`Object`/包装类
+- **第 3 周**：集合框架（`ArrayList`/`HashMap` 源码）+ 异常 + IO
 - **第 3 周前**：把默认 JDK 从 26.0.2 切到 21 LTS，并设置 `JAVA_HOME`（Maven 前置条件）

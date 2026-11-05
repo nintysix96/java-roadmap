@@ -85,8 +85,8 @@ public class ScoreManager {
     }
 
     static int readScore(){
-        System.out.println("Please enter your score(0-100)");
         while(true){
+            System.out.println("Please enter your score(0-100)");
             if(!sc.hasNextInt()){
                 System.out.println("Not a number");
                 sc.next();
@@ -110,6 +110,79 @@ public class ScoreManager {
         return false;
     }
 
+    static int indexOf(String name){
+        for(int i = 0;i < count;i++){
+            if(names[i].equals(name)){
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    static void deleteStudent(){
+        if(count == 0){
+            System.out.println("No records");
+            return;
+        }
+        while(true){
+            System.out.println("Please enter student's name");
+            String name = sc.nextLine().trim();
+            if(name.isEmpty()){
+                System.out.println("Name cannot be empty");
+                continue;
+            }
+
+            if(!exists(name)){
+                System.out.println("Student not found");
+                return;
+            }else{
+                int index = indexOf(name);
+                for(int i = index;i<count-1;i++){
+                    names[i] = names[i+1];
+                    scores[i] = scores[i+1];
+                }
+                names[count-1] = null;
+                scores[count-1] = 0;
+                count--;
+                System.out.println("Deleted: " + name);
+                return;
+            }
+        }
+    }
+
+    static void sortByScore(){
+        if(count == 0){
+            System.out.println("No records");
+            return;
+        }
+        for(int i = 0;i<count-1;i++){
+            for(int j = 0;j < count - 1 - i;j++){
+                if(scores[j] < scores[j + 1]){
+                    int temp_int = scores[j];
+                    scores[j] = scores[j+1];
+                    scores[j+1] = temp_int;
+                    String temp_str = names[j];
+                    names[j] = names[j+1];
+                    names[j+1] = temp_str;
+                }
+            }
+        }
+    }
+
+    static void passRate(){
+        if(count == 0){
+            System.out.println("No records");
+            return;
+        }
+
+        double passed = 0,pass_rate;
+        for(int i = 0;i <= count - 1;i++){
+            if(scores[i] >= 60)passed++;
+        }
+
+        pass_rate = passed*100.0 /count;
+        System.out.printf("Pass rate: %.1f%%%n",pass_rate);
+    }
 
     public static void main(String[] args) {
         while(true){
@@ -119,9 +192,19 @@ public class ScoreManager {
                 2.List all
                 3.Statistics
                 4.Search by name
-                5.Exit
+                5.Delete
+                6.Sort
+                7.Pass rate
+                8.Exit
                 Choose
                 """);
+
+            if(!sc.hasNextInt()){
+                System.out.println("Invalid input");
+                sc.next();
+                continue;
+            }
+
             int num = sc.nextInt();
             sc.nextLine();
             switch(num){
@@ -129,7 +212,10 @@ public class ScoreManager {
                 case 2 : printAll();break;
                 case 3 : statistics();break;
                 case 4 : findByName();break;
-                case 5 : return ;
+                case 5 : deleteStudent();break;
+                case 6 : sortByScore();break;
+                case 7 :passRate();break;
+                case 8 : return ;
                 default:System.out.println("Invalid choice");
             }
         }

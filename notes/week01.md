@@ -1,7 +1,7 @@
 # 第 1 周学习笔记
 
-> 记录人：nintysix96 ｜ 更新时间：2026-11-02
-> 配套代码：`week01/learning/day05_method/`
+> 记录人：nintysix96 ｜ 更新时间：2026-11-05
+> 配套代码：`week01/learning/day05_method/`、`week01/learning/day06_score_manager/`
 
 ## 进度看板
 
@@ -12,7 +12,7 @@
 | Day 3 | 流程控制 if/for/while/switch | ✅ 自学完成 |
 | Day 4 | 数组 | ⏭ 跳过（见下方速查，代码里已验证） |
 | Day 5 | 方法 / 重载 / 递归 / 值传递 | ✅ 完成 |
-| Day 6 | 综合项目：学生成绩管理 | ⬜ 待做 |
+| Day 6 | 综合项目：学生成绩管理（118 行，6 条路径回归通过） | ✅ 完成 |
 | Day 7 | 第一周复盘 + 自测 | ⬜ 待做 |
 
 ---
@@ -223,6 +223,147 @@ java Ex06
 
 ---
 
+## Day 6：学生成绩管理（综合项目）
+
+> 代码：`week01/learning/day06_score_manager/ScoreManager.java`（118 行）
+> 交付标准：6 条路径全部回归通过——录入 / 判重 / 列表 / 统计 / 查询 / 退出
+
+### 6.1 程序结构
+
+```
+ScoreManager
+├── 数据（static 字段）
+│   ├── MAX = 10                   容量
+│   ├── String[] names             姓名（与 scores 平行数组）
+│   ├── int[] scores               成绩
+│   ├── int count                  已录入人数（= 已用长度，不是 MAX）
+│   └── Scanner sc                 全局唯一，不要 new 多个
+├── main()            菜单循环 + switch 分发，case 5 用 return 退出
+├── addStudent()      满员 → 姓名校验 → 判重 → 读成绩 → 入库 → count++
+├── readScore()       while(true) + hasNextInt，校验 0~100
+├── exists(name)      遍历 0..count-1，用 equals 比对
+├── printAll()        空表判断 → 表头 → 循环 printOne(i)
+├── printOne(i)       单行输出，被 printAll / findByName 复用
+├── statistics()      一次遍历求 total / max / min
+└── findByName()      读姓名 → 遍历 equals → 命中打印 / 未命中 Not found
+```
+
+四条贯穿全项目的规则：
+
+1. **所有循环用 `i < count`**，不是 `i < MAX`（否则打印 9 个 `null 0`，统计也错）
+2. **`max` / `min` 初值取 `scores[0]`**，不能取 `0`（两人都是 80 时 min 会错成 0）
+3. **平均分必须 `(double) total / count`**，否则整数除法把小数砍掉
+4. **输出格式串只在 `printOne` 里维护一份**，改对齐只改一处
+
+### 6.2 今天踩的 8 个坑（现象 → 原因 → 解法）
+
+| # | 现象 | 原因 | 解法 |
+|---|---|---|---|
+| 1 | `NoClassDefFoundError: ScoreManager (wrong name: day06_score_manager/ScoreManager)` | 写了 `package`，类全名变成 `包名.类名` | 第一周删掉 package；或用 `java -cp 目录 全限定名` |
+| 2 | `Added:Alice5`，成绩 85 凭空消失 | `main` 里已经消费过换行，`addStudent` 又补一句 `nextLine()`，把成绩行吃掉了 | 换行只在 `nextInt()` 之后、`nextLine()` 之前**消费一次**，下游不要再补 |
+| 3 | 选 5 退不出程序，继续刷菜单 | `switch` 里的 `break` 只跳出 switch，`while` 照转 | `case 5: return;`（或布尔标志位 / 标签 break） |
+| 4 | 菜单只在启动时出现一次 | 打印语句写在了 `while` 外面 | 挪进循环体首行 |
+| 5 | `UnknownFormatConversionException: Conversion = '-'` | `%-4` 缺类型字符；`-4d` 缺 `%` | `%-4s`、`%-4d` |
+| 6 | 统计 `Total: 0`、`Min: 0`，录满 10 人还越界 | 循环体里写的是 `scores[count]`，`count` 在循环里不变，永远读空位 0 | 改用循环变量 `scores[i]` |
+| 7 | `错误: 找不到符号 result` | `result` 是 `printAll` 的局部变量，别的方法看不到 | 补一行定义，或抽 `printOne(i)` 复用 |
+| 8 | 菜单输 `abc` 抛 `InputMismatchException`，程序直接退出 | 菜单层 `sc.nextInt()` 没有防护（`readScore` 里有，菜单没有） | `if (!sc.hasNextInt()) { println("Invalid choice"); sc.next(); continue; }` |
+
+> 第 6 条的排查诀窍：**累加量恒为 0 / 恒等于初值时，先怀疑循环体里数组下标是不是没跟着 `i` 变**。
+
+### 6.3 知识点补充
+
+#### （1）`printf` 格式符结构
+
+```
+%   [标志][宽度][.精度]  类型字符
+│    │      │              └─ 必填：s 字符串 / d 整数 / f 小数 / n 换行
+│    │      └─ 占多少列
+│    └─ - 表示左对齐（不写默认右对齐）
+└─ 必填
+```
+
+| 写法 | 含义 | 示例（值 85，名 Alice） |
+|---|---|---|
+| `%d` | 原样输出整数 | `85` |
+| `%5d` | 宽 5 右对齐 | `   85` |
+| `%-5d` | 宽 5 左对齐 | `85   ` |
+| `%-10s` | 宽 10 左对齐 | `Alice     ` |
+| `%.1f` | 小数保留 1 位（自动四舍五入） | `88.5` |
+| `%n` | 换行（跨平台，优于 `\n`） | — |
+
+⚠️ 格式符和参数**个数、类型都要对上**：少参数抛 `MissingFormatArgumentException`，类型不符抛 `IllegalFormatConversionException`。
+
+#### （2）`equals` vs `==`（操作文本时必用 `equals`）
+
+```java
+String a = "Alice";
+String b = new String("Alice");
+a == b          // false —— 比的是引用（地址）
+a.equals(b)     // true  —— 比的是内容
+```
+
+项目里 `names[i].equals(name)`、`exists()` 判重全靠它。**用 `==` 会出现"明明存在却查不到"的 bug**，而且不报错。
+
+`equalsIgnoreCase` 可忽略大小写。
+
+#### （3）Scanner 的三条时序规律
+
+| 操作 | 是否消费 | 后果 |
+|---|---|---|
+| `hasNextInt()` | ❌ 只看不取 | 不消费非法输入 → 死循环，必须配 `sc.next()` |
+| `nextInt()` | ✅ 取走数字，**停在 `\n` 前** | 后面接 `nextLine()` 会读到空字符串 |
+| `nextLine()` | ✅ 读到行尾，**连 `\n` 一起吃掉** | 它之后不存在残留换行 |
+
+记法：**`nextInt()` 之后、`nextLine()` 之前，补一次 `nextLine()`；补过就不要再补。**
+
+#### （4）局部变量的作用域
+
+变量只在**它所在的那对 `{}`** 内有效，方法之间不共享。`printAll` 里的 `String result` 在 `findByName` 里不存在——这就是第 7 条坑的来源。
+
+判断技巧：**看到"找不到符号"，先问"这个变量是在哪个 `{}` 里定义的"**。
+
+#### （5）整数除法
+
+`5 / 2 == 2`。要小数必须有一个操作数是浮点：`5.0 / 2` 或 `(double) total / count`。
+
+### 6.4 面试问答（今天新增）
+
+1. **`==` 和 `equals` 的区别？**
+   `==` 比引用（基本类型比数值），`equals` 默认也是比引用，但 `String`、`Integer` 等重写过，比的是内容。
+
+2. **为什么 `nextInt()` 之后直接 `nextLine()` 会读到空？**
+   `nextInt` 只消费数字，换行符留在缓冲区；`nextLine` 从当前位置读到行尾，遇到残留换行就立刻返回空串。
+
+3. **`switch` 里的 `break` 能跳出 `while` 吗？**
+   不能，`break` 只作用于最近的一层 `switch` 或循环。要退出外层循环用 `return`、标志位或标签 `break outer;`。
+
+4. **数组的 `length` 和集合的 `size()` 区别？**
+   `length` 是数组的**属性**（不带括号），`size()` 是集合的**方法**（带括号）。字符串用 `length()`。
+
+### 6.5 回归验收记录（2026-11-05）
+
+| 路径 | 实测输出 | 结果 |
+|---|---|---|
+| 空表选 2 | `No record` | ✅ |
+| 录入 Alice 85 / Bob 92 | `Added: Alice (85)`、`Added: Bob (92)` | ✅ |
+| 重复录入 Alice | `Student already exists`，未索要成绩 | ✅ |
+| 列表 | 2 行，列对齐，PASS 正确 | ✅ |
+| 统计 | `Total: 177`、`Average: 88.5`、`Max: 92`、`Min: 85` | ✅ |
+| 两人都是 80 | `Average: 80.0`、`Max: 80`、`Min: 80` | ✅ |
+| 录满 10 人后统计 | `Total: 550`、`Average: 55.0`，不越界 | ✅ |
+| 查 Alice / 查 Dave | 打印整行 / `Not found` | ✅ |
+| 选 99 | `Invalid choice` | ✅ |
+| 菜单输 `abc` | ❌ `InputMismatchException`（待修） | ⬜ |
+
+### 6.6 Day 6 遗留 TODO
+
+- [ ] 菜单层加 `hasNextInt()` 防护（坑 8）
+- [ ] `"No record"` → `"No records"`
+- [ ] `readScore()` 的提示语从 `while` 外挪到循环内（输错后不再提示）
+- [ ] Day 7 三个加练功能：删除学生、按成绩排序、显示及格率
+
+---
+
 ## 自测（明天做，不许翻笔记）
 
 1. `int[] a = {1,2,3}; int[] b = a; b[0] = 9;` 之后 `a[0]` 是多少？为什么？
@@ -234,10 +375,18 @@ java Ex06
 7. `main` 方法的完整签名是什么？缺了 `public` 会怎样？
 8. `javac` 一个空文件会发生什么？
 
+**Day 6 追加：**
+
+9. `printAll` 为什么用 `i < count` 而不是 `i < MAX`？
+10. 为什么 `max` / `min` 的初值不能写 `0`？用什么当初值？
+11. 比较两个 `String` 的内容为什么必须用 `equals`？用 `==` 会怎样？
+12. 菜单里输入 `abc` 为什么会崩？怎么修？
+13. `nextInt()` 之后直接 `nextLine()` 读到空串，根因是什么？
+
 ---
 
 ## 下一步
 
-- Day 6：学生成绩管理（数组 + 方法 + 菜单循环 + 输入校验），**这个不跳过**
-- Day 7：本周复盘 + 上面 8 道自测
-- 第 2 周：面向对象（类与对象、构造器、封装、继承、多态、接口）
+- **Day 7**：做完上面 13 道自测 + 给项目加 3 个功能（删除学生 / 按成绩排序 / 显示及格率）
+- **第 2 周**：面向对象（类与对象、构造器、封装、继承、多态、接口）
+- **第 3 周前**：把默认 JDK 从 26.0.2 切到 21 LTS，并设置 `JAVA_HOME`（Maven 前置条件）

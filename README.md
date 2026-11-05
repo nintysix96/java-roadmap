@@ -26,21 +26,29 @@ java-roadmap/
 │   └── week01.md
 └── week01/
     └── learning/
-        └── day05_method/      # 方法 / 重载 / 递归 / 值传递
-            ├── Ex01.java      # 重载求最值
-            ├── Ex02.java      # 计算器
-            ├── Ex03.java      # 质数判断
-            ├── Ex04.java      # 递归：阶乘/求和/斐波那契/汉诺塔
-            ├── Ex05.java      # 数组方法：最值/平均/反转
-            └── Ex06.java      # 值传递四组实验
+        ├── day05_method/      # 方法 / 重载 / 递归 / 值传递
+        │   ├── Ex01.java      # 重载求最值
+        │   ├── Ex02.java      # 计算器
+        │   ├── Ex03.java      # 质数判断
+        │   ├── Ex04.java      # 递归：阶乘/求和/斐波那契/汉诺塔
+        │   ├── Ex05.java      # 数组方法：最值/平均/反转
+        │   └── Ex06.java      # 值传递四组实验
+        └── day06_score_manager/
+            └── ScoreManager.java   # 综合项目：学生成绩管理
 ```
 
 ## 怎么编译运行
 
 ```powershell
+# 第 5 天的练习
 cd week01/learning/day05_method
 javac -encoding UTF-8 *.java
 java Ex06
+
+# 第 6 天的项目
+cd week01/learning/day06_score_manager
+javac -encoding UTF-8 ScoreManager.java
+java ScoreManager
 ```
 
 - `-encoding UTF-8` 让 javac 正确读取中文注释（IDEA 里默认 UTF-8，不用加）

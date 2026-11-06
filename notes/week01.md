@@ -1,6 +1,6 @@
 # 第 1 周学习笔记
 
-> 记录人：nintysix96 ｜ 更新时间：2026-11-05
+> 记录人：nintysix96 ｜ 更新时间：2026-11-06
 > 配套代码：`week01/learning/day05_method/`、`week01/learning/day06_score_manager/`
 
 ## 进度看板
@@ -14,6 +14,7 @@
 | Day 5 | 方法 / 重载 / 递归 / 值传递 | ✅ 完成 |
 | Day 6 | 综合项目：学生成绩管理（118 行，6 条路径回归通过） | ✅ 完成 |
 | Day 7 | 第一周复盘 + 自测 + v2（删除/排序/及格率，222 行，9 条回归通过） | ✅ 完成 |
+| Day 8 | 面向对象（一）：类与对象 + 参数绑定三例 | 🔄 理论已学，练习待交 |
 
 ---
 
@@ -528,6 +529,237 @@ static int indexOf(String name) {
 
 ---
 
+## Day 8（一）：类与对象 + 参数绑定三例
+
+> 参考资料：廖雪峰 [3.1 面向对象基础](https://liaoxuefeng.com/books/java/oop/basic/index.html) · [3.1.1 方法](https://liaoxuefeng.com/books/java/oop/basic/method/index.html)
+> 代码目录（练习）：`week01/learning/day08_oop_basic/`
+
+### 8.1 为什么需要类：从平行数组的痛讲起
+
+```java
+String[] names = new String[10];
+int[] scores = new int[10];
+```
+
+| 问题 | 表现 |
+|---|---|
+| 加字段 | 想加"年龄"→ 再加一个 `int[] ages`，三处都要同步 |
+| 排序 | 交换成绩**必须**同时交换姓名，漏一次就错位，**且不报错** |
+| 删除 | 三个数组都要前移，漏一个就乱 |
+
+类解决的正是这件事：**把"一个人的数据 + 操作这些数据的方法"绑成一个整体**。
+
+```java
+Student[] students = new Student[10];   // 一个人 = 一个对象
+```
+
+### 8.2 定义类与 `new` 的内存模型
+
+```java
+public class Student {
+    String name;      // 成员变量（字段）
+    int score;
+
+    void introduce() {
+        System.out.println("I am " + name + ", score = " + score);
+    }
+
+    boolean isPass() {
+        return score >= 60;
+    }
+}
+```
+
+三条硬规则：
+
+1. **文件名必须与 `public class` 同名**（`Student.java` ↔ `public class Student`）
+2. **一个文件只能有一个 `public` 类**
+3. 成员方法里可以直接用成员变量，不用当参数传
+
+`new Student()` 做三件事：① 堆里分配内存 ② 字段填默认值 ③ 返回地址给变量。
+
+```
+栈（main 栈帧）                    堆
+┌──────────────┐
+│ s1 = 0x1a2b ─┼──────────────► ┌───────────────────┐
+└──────────────┘                │ name="Alice"      │
+                                │ score=85          │
+                                └───────────────────┘
+```
+
+**`s1` 里存的是地址，不是数据本身**——和数组完全同机制（Day 5 的引用副本）。
+
+### 8.3 成员变量有默认值，局部变量没有
+
+| 类型 | 成员变量 | 局部变量 |
+|---|---|---|
+| `int` / `long` | `0` | **无**，直接用 → 编译错误 |
+| `double` | `0.0` | 同上 |
+| `boolean` | `false` | 同上 |
+| 引用类型 | `null` | 同上 |
+
+```java
+public class Demo {
+    int count;                  // 成员变量，默认 0
+    public static void main(String[] args) {
+        int x;
+        System.out.println(x);  // ❌ 编译错误：可能尚未初始化变量 x
+    }
+}
+```
+
+> 面试常问："Java 变量不初始化能用吗？"——成员变量能，局部变量不能。
+
+### 8.4 `null` 与 NPE
+
+```java
+Student s = null;
+System.out.println(s.name);   // NullPointerException
+```
+
+看到 NPE 的固定动作：**找哪个引用是 `null`**。
+
+### 8.5 对象数组的两个坑（最要命，直接关系项目重构）
+
+**坑 1：`new Student[3]` 只创建了"装引用的格子"，里面全是 `null`**
+
+```java
+Student[] students = new Student[3];   // 三个格子都是 null
+students[0].introduce();               // ❌ NPE
+
+students[0] = new Student();           // ✅ 必须逐个 new
+```
+
+**坑 2：数组里存的是引用，不是对象副本**
+
+```java
+arr[0] = s1;
+arr[0].score = 100;
+System.out.println(s1.score);   // 100 —— 同一个对象
+```
+
+### 8.6 参数绑定三例（廖雪峰 3.1.1，★★ 核心）
+
+**先说结论**：三个例子传参机制**完全相同**（都是值传递，传的是副本），差别只在**赋值语句的左边**。
+
+#### 例 1：基本类型 —— 传数值副本
+
+```java
+int n = 15;
+p.setAge(n);        // 复制 15 传给 age
+n = 20;             // 改 main 里的 n
+p.getAge();         // 仍是 15
+```
+
+结论：基本类型传**数值副本**，两边互不影响。
+
+#### 例 2：引用类型 —— 改对象内容 → 外面看得到
+
+```java
+String[] fullname = {"Homer", "Simpson"};
+p.setName(fullname);         // 传地址的副本
+fullname[0] = "Bart";        // 改数组内容
+p.getName();                 // "Bart Simpson" ← 变了
+```
+
+结论：副本和原变量**指向同一个对象**，改内容双方都看得到。
+
+#### 例 3：引用类型 —— 改指向 → 外面看不到（两次都是 Bob）
+
+```java
+String bob = "Bob";
+p.setName(bob);              // 传地址的副本（指向 "Bob"）
+bob = "Alice";               // 让 bob 换指向
+p.getName();                 // 仍是 "Bob"
+```
+
+**为什么是 Bob**：
+
+1. `bob = "Alice"` 改的是**变量的指向**，不是 "Bob" 这个对象的内容
+2. `String` **不可变**，连"改内容"这条路都堵死了
+
+#### 决定性逻辑：这叫不叫"引用传递"？
+
+若真是引用传递（形参=实参同一变量），例 3 应该输出 `Alice`；实际输出 `Bob` → **形参只是副本** → Java 只有值传递。
+
+#### 左边写什么，决定改谁（最关键的一张表）
+
+| 赋值左边 | 改的是 | 外面看得到 |
+|---|---|---|
+| `bob = "Alice"` | 变量换指向 | ❌ |
+| `fullname[0] = "Bart"` | 对象里的元素 | ✅ |
+| `p.name = "X"` | 对象里的字段 | ✅ |
+| `fullname = new String[]{...}` | 变量换指向 | ❌ |
+
+> **口诀：左边是变量名 → 改指针；左边是 `变量[...]` 或 `变量.字段` → 改内容。**
+
+#### 三层模型：例 2 到底动了哪一层
+
+```
+第一层：变量 fullname  ──►  数组对象
+第二层：数组对象        ──►  2 个格子
+第三层：格子[0]、[1]    ──►  各自的 String
+```
+
+- `fullname[0] = "Bart"` → 动**第三层**，`p.name` 顺着同一地址看过去，看得到
+- `fullname = new String[]{...}` → 动**第一层**，`p.name` 手里地址没变，看不到
+
+#### 想让例 3 达到例 2 的效果（四方案）
+
+| 方案 | 写法 | 改 `Person` 类 | 实际项目 |
+|---|---|---|---|
+| **0. 先改再传** | `bob = "Alice"; p.setName(bob);` | 否 | ✅ 最常用（String 的惯例：`s = s.trim()`） |
+| **1. 直接调 setter** | `p.setName("Alice");` | 否 | ✅ 业务代码 99% 这么写 |
+| **2. 换 `StringBuilder`** | `p.setName(sb); sb.replace(0, sb.length(), "Alice");` | 是 | 偶尔（需频繁修改时） |
+| **3. `String[]` 盒子** | `holder[0] = "Alice";` | 是 | ✗ 只为理解机制，和例 2 完全同构 |
+
+**永远做不到的事**：让"`bob` 换指向"自动反映到 `p.name`——机制层面不可能（`p.name` 存的是当时那份地址副本）。
+
+#### 延伸自测（面试问法）
+
+```java
+StringBuilder sb = new StringBuilder("Bob");
+p.setName(sb);
+System.out.println(p.getName());   // ① Bob
+sb.append("!");                    // 改内容
+System.out.println(p.getName());   // ② Bob!
+sb = new StringBuilder("Alice");   // 改指向
+System.out.println(p.getName());   // ③ Bob!
+```
+
+#### 与后续章节的关联
+
+| 后面会用到 | 怎么用 |
+|---|---|
+| Day 9 封装 | setter 检查参数，因为传进来的值会直接存进字段 |
+| Day 10 多态 | 父类引用指向子类对象，靠的就是"引用存地址" |
+| Day 11 接口 | 接口变量指向任意实现类对象 |
+| 第 6 周 Spring | 依赖注入 = 把对象引用塞进字段，同一套模型 |
+
+### 8.7 本段练习（待交）
+
+`Student.java`：字段 `name`/`score`；`introduce()`、`isPass()`、`getInfo()`
+`StudentTest.java`：3 个对象放 `Student[]`，遍历打印 + 平均分；另做一次 `Student s = null; s.name` 的 NPE 实验并抄下报错。
+
+### 8.8 本段必踩的坑
+
+| 坑 | 现象 | 原因 |
+|---|---|---|
+| 文件名 ≠ 类名 | `class X is public, should be declared in a file named X.java` | 硬性规定 |
+| 忘了 `new` 就访问 | `NullPointerException` | 引用是 null |
+| 对象数组没逐个 new | 同上 | `new Student[3]` 只建了数组 |
+| `main` 里写 `this` | 编译错误 | `static` 方法没有当前对象 |
+| 一个文件两个 `public class` | 编译错误 | 只能有一个 public 类 |
+
+### 8.9 面试问答
+
+1. **类和对象的关系？** 类是模板/类型，对象是它的一个实例；`new` 在堆上分配并返回引用。
+2. **成员变量和局部变量的默认值？** 成员变量有默认值（0/false/null），局部变量必须先赋值。
+3. **Java 是值传递还是引用传递？** 只有值传递；引用类型传地址副本，能改对象内容，不能改引用指向。
+4. **`String` 传参为什么改不动？** 不可变（改不了内容）+ 传的是地址副本（改指向没用）。
+
+---
+
 ## 自测（明天做，不许翻笔记）
 
 1. `int[] a = {1,2,3}; int[] b = a; b[0] = 9;` 之后 `a[0]` 是多少？为什么？
@@ -551,7 +783,8 @@ static int indexOf(String name) {
 
 ## 下一步
 
-- **Day 8**：面向对象——类与对象、构造器、`this`、封装（**重点，不要跳**）
-- **第 2 周后半**：继承、多态、抽象类、接口、`String`/`Object`/包装类
-- **第 3 周**：集合框架（`ArrayList`/`HashMap` 源码）+ 异常 + IO
-- **第 3 周前**：把默认 JDK 从 26.0.2 切到 21 LTS，并设置 `JAVA_HOME`（Maven 前置条件）
+- **Day 8 剩余**：构造器（默认构造器会消失）、`this`、封装（`private` + getter/setter + 校验）
+- **Day 9**：继承、方法重写、`super`、`final`、包与访问修饰符
+- **Day 10–11**：多态、转型、抽象类、接口
+- **第 3 周**：集合框架（`ArrayList`/`HashMap`）+ 异常 + IO
+- **第 3 周前**：把默认 JDK 从 26.0.2 切到 21 LTS，并设置 `JAVA_HOME`

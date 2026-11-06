@@ -5,6 +5,18 @@
 //   NoClassDefFoundError: StudentTest (wrong name: day08_oop_basic/StudentTest)
 // 第一周统一不用 package，第 9 天正式学"包"的时候再加回来。
 public class Student {
+    public Student(){}
+    public Student(String name){
+        // 【建议改法】原写法是 this.name = name;（能跑），但只给名字时更推荐"构造器互调"：
+        // this(...) 会调用本类的另一个构造器，把"赋值 + 校验"的逻辑集中到一处，
+        // 以后加校验（score 必须 0~100）时只需改全参构造器，不用改三个地方。
+        // 注意：this(...) 必须是构造器的第一行。
+        this(name, 0);
+    }
+    public Student(String name,int score){
+        this.name = name;
+        this.score = score;
+    }
 
     // 现在字段用 public 是为了方便直接赋值；
     // 第四段学"封装"时会改成 private + getter/setter + 校验。

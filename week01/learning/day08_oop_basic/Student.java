@@ -24,4 +24,6 @@ public class Student {
     public String getInfo() {
         return this.name + "(" + this.score + ")";
     }
+
+
 }

@@ -14,7 +14,7 @@
 | Day 5 | 方法 / 重载 / 递归 / 值传递 | ✅ 完成 |
 | Day 6 | 综合项目：学生成绩管理（118 行，6 条路径回归通过） | ✅ 完成 |
 | Day 7 | 第一周复盘 + 自测 + v2（删除/排序/及格率，222 行，9 条回归通过） | ✅ 完成 |
-| Day 8 | 面向对象（一）：类与对象 + 参数绑定三例 | 🔄 练习1、2 完成，练习3 待做 |
+| Day 8 | 面向对象（一）：类与对象 + 参数绑定三例 | ✅ 第一段完成（练习1/2/3 全过） |
 
 ---
 
@@ -833,6 +833,64 @@ static void reassignArray(String[] arr){ arr = new String[]{"Bart"}; }   // 改�
 
 > 赋值左边是**变量名** → 改指针 → 外面看不到
 > 赋值左边是**变量[下标]** 或 **变量.字段** → 改内容 → 外面看得到
+
+### 8.11 练习三：`findTop` / `average` 记录（2026-11-06）
+
+代码：`StudentTest.java` 末尾两个静态方法 + 边界用例
+
+```java
+static Student findTop(Student[] arr) {      // 返回对象，不是分数
+    if (arr == null || arr.length == 0) return null;   // 顺序不能反！
+    Student top = arr[0];                    // 初值取第一个元素
+    for (int i = 1; i < arr.length; i++) {
+        if (arr[i].score > top.score) top = arr[i];
+    }
+    return top;
+}
+
+static double average(Student[] arr) {
+    if (arr == null || arr.length == 0) return 0;
+    int sum = 0;
+    for (int i = 0; i < arr.length; i++) sum += arr[i].score;
+    return (double) sum / arr.length;         // 除前转 double
+}
+```
+
+**边界四连（实测通过）**
+
+| 输入 | `findTop` | `average` |
+|---|---|---|
+| `null` | `null` | `0.0` |
+| `new Student[0]` | `null` | `0.0` |
+| 单人数组 | 就是他 `Alice(85)` | — |
+| 三人正常 | `Carol(92)` | `77.3` |
+| 两人同分 80 | 取第一个 `A`（用 `>` 不是 `>=`） | — |
+| 单人 0 分 | 返回 `Z`（**证明初值取 `arr[0]` 而不是 0**） | — |
+
+**批改发现的问题：第 42 行孤立的 `java`**
+
+```java
+System.out.printf("Average: %.1f%n", avg);
+
+java          ← 多余的标识符（复制粘贴带进来的）
+
+Student top = findTop(students);
+```
+
+编译报错是 `StudentTest.java:46: 错误: 需要';'`。
+
+**教训：报错行号指向"编译器发现不对劲的位置"，不是"错误真正所在的位置"。** 看到"需要 `';'`"这类语法错，要**从报错行往上找**，看它前一句是不是缺分号、或者混进了多余字符。
+
+**为什么这两个方法不在 `Student` 类里**
+
+| 方法 | 操作谁 | 归属 |
+|---|---|---|
+| `introduce()` / `isPass()` / `getInfo()` | `this` | ✅ `Student`（一个学生的事） |
+| `findTop(Student[])` / `average(Student[])` | 参数里的集合 | ❌ 不属于 `Student` |
+
+判断规则：**方法体里主要处理的是 `this` 还是参数？** 处理参数里的集合 → 属于"管理类"。
+
+正式项目应新建 `StudentManager`（持有 `Student[]` 字段，方法不用再传数组）。练习阶段暂时放测试类，学完封装后做这个重构——那也正是 `ScoreManager` 的升级方向。
 
 ---
 

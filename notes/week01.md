@@ -14,7 +14,7 @@
 | Day 5 | 方法 / 重载 / 递归 / 值传递 | ✅ 完成 |
 | Day 6 | 综合项目：学生成绩管理（118 行，6 条路径回归通过） | ✅ 完成 |
 | Day 7 | 第一周复盘 + 自测 + v2（删除/排序/及格率，222 行，9 条回归通过） | ✅ 完成 |
-| Day 8 | 面向对象（一）：类与对象 + 参数绑定三例 | 🔄 理论已学，练习待交 |
+| Day 8 | 面向对象（一）：类与对象 + 参数绑定三例 | 🔄 练习1 完成，练习2/3 待做 |
 
 ---
 
@@ -736,10 +736,46 @@ System.out.println(p.getName());   // ③ Bob!
 | Day 11 接口 | 接口变量指向任意实现类对象 |
 | 第 6 周 Spring | 依赖注入 = 把对象引用塞进字段，同一套模型 |
 
-### 8.7 本段练习（待交）
+### 8.7 练习一：完成记录（2026-11-06）
 
-`Student.java`：字段 `name`/`score`；`introduce()`、`isPass()`、`getInfo()`
-`StudentTest.java`：3 个对象放 `Student[]`，遍历打印 + 平均分；另做一次 `Student s = null; s.name` 的 NPE 实验并抄下报错。
+代码：`week01/learning/day08_oop_basic/Student.java`、`StudentTest.java`
+
+**实测输出（7 行全对）**
+
+```
+I am Alice, score = 85
+I am Bob, score = 55
+I am Carol, score = 92
+Alice(85) PASS
+Bob(55) FAIL
+Carol(92) PASS
+Average: 77.3
+```
+
+**批改发现的两个问题**
+
+| # | 问题 | 现象 | 修正 |
+|---|---|---|---|
+| 1 | 两个文件都写了 `package day08_oop_basic;` | `javac` 能过，但 `java StudentTest` 报 `NoClassDefFoundError: StudentTest (wrong name: day08_oop_basic/StudentTest)` | 删掉 package（第一周不用包） |
+| 2 | 调试语句留在代码里 | `System.out.println(students[0].name);` 让输出多一行 `Alice`，和验收格式对不上 | 先验证、再删除，调试代码不进提交 |
+
+**做对的地方**
+
+- 三个对象都正确 `new` 过，没有出现"对象数组元素是 null"
+- 用数组字面量 `Student[] students = {s1, s2, s3};` 比逐个下标赋值更简洁
+- 循环用 `students.length`，不是硬编码 3
+- 平均分 `(double) sum / length` + `%.1f`，两个坑都避开了
+- `getInfo()` 用字符串拼接，格式正确
+
+**老坑复发：`package`**
+
+这已经是第三次踩（Day 6 项目、Day 8 练习）。记住一句话：
+
+> **第一周任何练习都不要写 `package`。写了之后命令行必须 `java -cp . 包名.类名`，而 IDEA 会偷偷帮你补全，让你以为没问题。**
+
+**调试验证过的代码要清干净**
+
+`System.out.println(students[0].name);` 这种"验证一下对不对"的临时输出，验证完就删。留在代码里的后果：输出多一行、以后写自动化测试会失败、别人 review 时会问你为什么打这行。
 
 ### 8.8 本段必踩的坑
 
